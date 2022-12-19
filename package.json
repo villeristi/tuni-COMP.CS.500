@@ -1,0 +1,23 @@
+{
+  "name": "tuni-web-development",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node .",
+    "watch": "nodemon .",
+    "reset-db": "node ./src/setup/reset-db.js",
+    "create-orders": "node ./src/setup/create-orders.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
