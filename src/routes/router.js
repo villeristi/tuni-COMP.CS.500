@@ -1,3 +1,6 @@
+const mongoose = require('mongoose');
+const HTTPError = require('../errors/http-error');
+
 const IGNORE_PATHNAMES = [
   'favicon.ico',
 ];
@@ -60,6 +63,27 @@ const bodyAsJson = (...args) => {
   });
 };
 
+/**
+ * Always respond with something
+ *
+ * @param {Function} func
+ * @returns
+ */
+const errorWrapper = (func) =>  (...args) => Promise.resolve(func(...args)).catch(
+  (err) => {
+    const [_, req] = args;
+    const status = (err instanceof mongoose.Error.ValidationError) ? 422 : err.status ?? 500;
+    const errorMsg =
+      (err instanceof mongoose.Error.ValidationError) || (err instanceof HTTPError)
+      ? err.message
+      : 'internal server error';
+
+    console.error(err);
+
+    return req.fail(errorMsg, status);
+  }
+);
+
 class DeadSimpleRouter {
   constructor() {
     this.handlers = {};
@@ -70,7 +94,7 @@ class DeadSimpleRouter {
       this[method] = (path, handler) => {
         this.handlers[path] = {
           ...this.handlers[path],
-          [method]: handler,
+          [method]: errorWrapper(handler),
         }
       }
     }
@@ -163,7 +187,7 @@ class DeadSimpleRouter {
 
     // Handle paths without params
     if(this.handlers[pathname]?.[method]) {
-      return this.handlers[pathname][method].apply(null, [req, res]);
+      return this.handlers[pathname][method].apply(this, [req, res]);
     }
 
     // Handle paths WITH params
@@ -191,7 +215,7 @@ class DeadSimpleRouter {
           }
         }
 
-        return this.handlers[path][method].apply(null, [req, res]);
+        return this.handlers[path][method].apply(this, [req, res]);
       }
     }
 
