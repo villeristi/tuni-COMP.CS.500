@@ -1,11 +1,64 @@
-const qs = require('querystring');
-const url = require('url');
-
 const IGNORE_PATHNAMES = [
   'favicon.ico',
 ];
 
 const supportedMethods = ['get', 'post', 'put', 'delete'];
+
+/**
+ * add .json function to http.response
+ *
+ * @param  {...any} args
+ * @returns Function
+ */
+const sendAsJson = (...args) => {
+  const [_, res] = args;
+
+  return (payload, code = 200) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(payload));
+  }
+}
+
+/**
+ * add .fail function to http.response
+ *
+ * @param  {...any} args
+ * @returns Function
+ */
+const sendFail = (...args) => {
+  const [_, res] = args;
+
+  return (message = 'internal server error', code = 500) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({error: message}));
+  }
+}
+
+/**
+ * Add .body-property to request
+ *
+ * @param  {...any} args
+ * @returns JSON
+ */
+const bodyAsJson = (...args) => {
+  const [req, _] = args;
+
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('error', err => reject(err));
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        resolve({})
+      }
+    });
+  });
+};
 
 class DeadSimpleRouter {
   constructor() {
@@ -35,13 +88,16 @@ class DeadSimpleRouter {
 
   /**
    * Send options
+   *
    * @param {string} path
    * @param {http.response} res
    * @returns
    */
   _sendOptions = (path, res) => {
+    const allowedMethods = Object.keys(this.handlers[path]).map((k) => k.toUpperCase()).join(', ');
+
     res.writeHead(204, {
-      'Access-Control-Allow-Methods': Object.keys(this.handlers[path]).map((k) => k.toUpperCase()).join(', '),
+      'Access-Control-Allow-Methods': allowedMethods,
       'Access-Control-Allow-Headers': 'Content-Type,Accept',
       'Access-Control-Max-Age': '86400',
       'Access-Control-Expose-Headers': 'Content-Type,Accept'
@@ -51,7 +107,7 @@ class DeadSimpleRouter {
   }
 
   /**
-   * Attach child routes
+   * Attach child routers
    *
    * @param {DeadSimpleRouter|Array<DeadSimpleRouter>} routerInstances
    */
@@ -72,13 +128,25 @@ class DeadSimpleRouter {
    * @param {http.response} res
    * @returns
    */
-  handleRequests = (req, res) => {
-    const { method: m } = req;
-    const pathname = url.parse(req.url).pathname;
+  handleRequests = async (req, res) => {
+    const { method: m, headers } = req;
+    const { pathname, searchParams } = new URL(req.url, `http://${headers.host}`);
     const method = m.toLowerCase();
 
-    // Instantiate params as empty object
+    // Add params-property to request
     req.params = {}
+
+    // Add query-property to request
+    req.query = Object.fromEntries(searchParams);
+
+    // add .json-method to response
+    res.json = sendAsJson.apply(this, [req, res]);
+
+    // add .fail-method to response
+    res.fail = sendFail.apply(this, [req, res]);
+
+    // add .body-property to request
+    req.body = await bodyAsJson.apply(this, [req, res]);
 
     // Handle OPTIONS-request
     if(method === 'options') {
