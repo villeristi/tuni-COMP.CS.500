@@ -46,9 +46,19 @@ const getUser = async (userId) => {
  */
 const updateUser = async (userId, body) => {
   const user = await User.findOneAndUpdate({ _id: userId }, { ...body }, { new: true });
-  await user.validate();
+  await user?.validate();
 
   return user ? UserDTO(user) : null;
+}
+
+/**
+ * Delete User
+ *
+ * @returns User
+ */
+const deleteUser = async (userId) => {
+  const deleted = await User.findOneAndRemove({ _id: userId });
+  return deleted ? UserDTO(deleted) : null;
 }
 
 
@@ -56,5 +66,6 @@ module.exports = {
   getUsers,
   getUser,
   updateUser,
+  deleteUser,
   updatableFields,
 }
