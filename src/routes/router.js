@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const HTTPError = require('../errors/http-error');
+const { getCurrentUser } = require('../utils/auth');
 
 const IGNORE_PATHNAMES = [
   'favicon.ico',
@@ -64,6 +65,32 @@ const bodyAsJson = (...args) => {
 };
 
 /**
+ * Add .body-property to request
+ *
+ * @param {http.incomingMessage} request
+ * @returns {boolean}
+ */
+const isJson = (...args) => {
+  const [req, _] = args;
+  return new Promise((resolve) => {
+    return resolve(req.headers['content-type']?.toLowerCase() === 'application/json');
+  });
+}
+
+/**
+ * Add .user-property to request
+ *
+ * @param {http.incomingMessage} request
+ * @returns {boolean}
+ */
+const getUser = (...args) => {
+  const [req, _] = args;
+  return new Promise((resolve) => {
+    return resolve(getCurrentUser(req));
+  });
+}
+
+/**
  * Always respond with something
  *
  * @param {Function} func
@@ -103,10 +130,10 @@ class DeadSimpleRouter {
   /**
    * Remove unwanted things from splitted paths
    *
-   * @param {array} partsArray
+   * @param {array} pathsArray
    * @returns
    */
-  _cleanUpPaths = (partsArray) => partsArray.filter((item) => {
+  _cleanUpPaths = (pathsArray) => pathsArray.filter((item) => {
     return Boolean(item) && !IGNORE_PATHNAMES.includes(item);
   });
 
@@ -157,10 +184,10 @@ class DeadSimpleRouter {
     const { pathname, searchParams } = new URL(req.url, `http://${headers.host}`);
     const method = m.toLowerCase();
 
-    // Add params-property to request
+    // Add initial .params-property to request
     req.params = {}
 
-    // Add query-property to request
+    // Add .query-property to request
     req.query = Object.fromEntries(searchParams);
 
     // add .json-method to response
@@ -171,6 +198,12 @@ class DeadSimpleRouter {
 
     // add .body-property to request
     req.body = await bodyAsJson.apply(this, [req, res]);
+
+    // add .jsJson-property to request
+    req.isJson = await isJson.apply(this, [req, res]);
+
+    // add .user-property to request
+    req.user = await getUser.apply(this, [req, res]);
 
     // Handle OPTIONS-request
     if(method === 'options') {
