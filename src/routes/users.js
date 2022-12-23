@@ -1,4 +1,3 @@
-const responseUtils = require('../utils/responseUtils');
 const Router = require('./router');
 
 const { isAdmin } = require('../utils/auth');

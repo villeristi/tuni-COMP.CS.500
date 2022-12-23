@@ -1,183 +1,109 @@
-const responseUtils = require('../utils/responseUtils');
-const { isJson } = require('../utils/requestUtils');
-const { handleResource } = require('../utils/router');
+const Router = require('./router');
 
-const { isAdmin, getCurrentUser } = require('../utils/auth');
-const { parseBodyJson } = require('../utils/requestUtils');
+const { isAdmin } = require('../utils/auth');
 const {
   getProducts,
   getProduct,
   updateProduct,
   deleteProduct,
-  createProduct: createProductService,
+  createProduct,
   updatableFields,
 } = require('../services/product');
 
-const HTTPError = require('../errors/http-error');
-const RESOURCE_BASE = '/api/products'
+const { getValidFields } = require('../utils/helpers');
+
+
+const productRouter = new Router();
+
 
 /**
- * Handler-methods
+ * GET products
  */
-const methods = {
-
-  /**
-   * Fetch all products
-   *
-   * @param  {...any} args
-   * @returns Array[Product]
-   */
-  'GET_ROOT': async (...args) => {
-    const [_, request, response] = args;
-    if(!getCurrentUser(request)) {
-      return responseUtils.forbidden(response);
-    }
-
-    const products = await getProducts();
-    return responseUtils.sendJson(response, products);
-  },
-
-  /**
-   * Create product
-   *
-   * @param  {...any} args
-   */
-  'POST_ROOT': async (...args) => {
-    const [_, request, response] = args;
-
-    if (!isJson(request)) {
-      throw new HTTPError({
-        message: 'Invalid Content-Type. Expected application/json',
-        status: 400,
-      });
-    }
-
-    if(!isAdmin(request)) {
-      throw new HTTPError({
-        message: `Only admins are allowed to create products!`,
-        status: 400,
-      });
-    }
-
-    const payload = await parseBodyJson(request);
-
-    // Get only allowed values from payload
-    const valuesToAdd = updatableFields.reduce((obj, key) => {
-      if(payload[key]) {
-        return {...obj, [key]: payload[key]}
-      }
-
-      return obj;
-    }, {});
-
-    if(!updatableFields.every((key) => valuesToAdd.hasOwnProperty(key))) {
-      const requiredFieldsMessage = updatableFields.join(', ');
-      throw new HTTPError({
-        message: `Required fields missing: ${requiredFieldsMessage}`,
-        status: 400,
-      });
-    }
-
-    const newProduct = await createProductService(valuesToAdd);
-
-    return responseUtils.sendJson(response, newProduct);
-  },
-
-  /**
-   * Fetch single product
-   * @param  {...any} args
-   * @returns
-   */
-  'GET': async (...args) => {
-    const [id, _, response] = args;
-    const product = await getProduct(id);
-
-    if(!product) {
-      throw new HTTPError({
-        message: `Product with id ${id} not found!`,
-        status: 404,
-      });
-    }
-
-    return responseUtils.sendJson(response, product);
-  },
-
-  /**
-   * Update product
-   * @param  {...any} args
-   */
-  'PUT': async (...args) => {
-    const [id, request, response] = args;
-
-    if (!isJson(request)) {
-      throw new HTTPError({
-        message: 'Invalid Content-Type. Expected application/json',
-        status: 400,
-      });
-    }
-
-    if(!isAdmin(request)) {
-      throw new HTTPError({
-        message: `Only admins are allowed to update products!`,
-        status: 400,
-      });
-    }
-
-    const payload = await parseBodyJson(request);
-
-    // Get only allowed values from payload
-    const valuesToUpdate = updatableFields.reduce((obj, key) => {
-      if(payload[key]) {
-        return {...obj, [key]: payload[key]}
-      }
-
-      return obj;
-    }, {});
-
-    const updatedProduct = await updateProduct(id, valuesToUpdate);
-
-    if(!updatedProduct) {
-      throw new HTTPError({
-        message: `Product with id ${id} not found!`,
-        status: 404,
-      });
-    }
-
-    return responseUtils.sendJson(response, updatedProduct);
-  },
-
-  /**
-   * Delete product
-   * @param  {...any} args
-   */
-  'DELETE': async (...args) => {
-    const [id, request, response] = args;
-
-    if(!isAdmin(request)) {
-      throw new HTTPError({
-        message: `Only admins are allowed to delete products!`,
-        status: 400,
-      });
-    }
-
-    const deleted = await deleteProduct(id);
-
-    if(!deleted) {
-      throw new HTTPError({
-        message: `Product with id ${id} not found!`,
-        status: 404,
-      });
-    }
-
-    return responseUtils.sendJson(response, deleted);
-  },
-
-  'DEFAULT': async (...args) => {
-    const [_, __, response] = args;
-    return responseUtils.methodNotAllowed(response);
+productRouter.get('/api/products', async (req, res) => {
+  if(!req.user) {
+    return res.fail('Only logged-in users are allowed to view products!', 403);
   }
-};
 
-module.exports = async (request, response) => {
-  return await handleResource(request, response, RESOURCE_BASE, methods);
-}
+  const products = await getProducts();
+  return res.json(products);
+});
+
+/**
+ * GET product
+ */
+productRouter.get('/api/products/:productId', async (req, res) => {
+  if(!req.user) {
+    return res.fail('Only logged-in users are allowed to view products!', 403);
+  }
+
+  const productId = req.params?.productId;
+  const product = await getProduct(productId);
+
+  if(!product) {
+    return res.fail(`Product with id ${productId} not found!`, 404);
+  }
+
+  return res.json(product);
+});
+
+/**
+ * POST product
+ */
+productRouter.post('/api/products', async (req, res) => {
+  if (!req.isJson) {
+    return res.fail('Invalid Content-Type. Expected application/json', 400);
+  }
+
+  if(!isAdmin(req.user)) {
+    return res.fail('Only admins are allowed to create products!', 403);
+  }
+
+  const newProduct = await createProduct(req.body);
+
+  return res.json(newProduct);
+});
+
+/**
+ * PUT product
+ */
+productRouter.put('/api/products/:productId', async (req, res) => {
+  const { productId } = req.params;
+
+  if (!req.isJson) {
+    return res.fail('Invalid Content-Type. Expected application/json', 400);
+  }
+
+  if(!isAdmin(req.user)) {
+    return res.fail('Only admins are allowed to update products!', 403);
+  }
+
+  const updatedFields = getValidFields(req.body, updatableFields);
+  const updatedProduct = await updateProduct(productId, updatedFields);
+
+  if(!updatedProduct) {
+    return res.fail(`Product with id ${productId} not found!`, 404);
+  }
+
+  return res.json(updatedProduct);
+});
+
+/**
+ * DELETE product
+ */
+productRouter.delete('/api/products/:productId', async (req, res) => {
+  const { productId } = req.params;
+
+  if(!isAdmin(req.user)) {
+    return res.fail('Only admins are allowed to delete products!', 403);
+  }
+
+  const deletedProduct = await deleteProduct(productId);
+
+  if(!deletedProduct) {
+    return res.fail(`Product with id ${productId} not found!`, 404);
+  }
+
+  return res.json(deletedProduct);
+});
+
+module.exports = productRouter;

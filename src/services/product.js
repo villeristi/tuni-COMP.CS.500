@@ -46,7 +46,7 @@ const getProduct = async (productId) => {
  */
 const createProduct = async (body) => {
   const product = await Product.create({ ...body });
-  await product.validate();
+  await product?.validate();
 
   return product ? ProductDTO(product) : null;
 }
