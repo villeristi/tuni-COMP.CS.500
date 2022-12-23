@@ -81,6 +81,10 @@ userRouter.delete('/api/users/:userId', async (req, res) => {
     return res.fail('Only admins are allowed to delete users!', 403);
   }
 
+  if (req.user?.id === userId) {
+    return res.fail(`You can't delete yourself!`, 400);
+  }
+
   const deletedUser = await deleteUser(userId);
 
   if (!deletedUser) {

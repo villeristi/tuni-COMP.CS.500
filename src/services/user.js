@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const HTTPError = require('../errors/http-error');
 const User = require('../models/user');
 
