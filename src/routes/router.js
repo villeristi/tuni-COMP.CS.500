@@ -173,6 +173,23 @@ class DeadSimpleRouter {
   }
 
   /**
+   * Check if current pathname & handler matches regex
+   *
+   * @param {Array<string>} currentPathParts
+   * @param {Array<string>} handlerPathParts
+   * @returns
+   */
+  _matchesRouteWithParams = (currentPathParts, handlerPathParts) => {
+    const resourceBase = '/' + currentPathParts.slice(0, -1).join('/');
+    const currentPath = '/' + currentPathParts.join('/');
+    const handlerPath = '/' + handlerPathParts.join('/');
+    const regex = new RegExp(`^${resourceBase}(\/.+?)$`)
+
+    return regex.test(currentPath) && regex.test(handlerPath);
+  };
+
+
+  /**
    * Handle the requests
    *
    * @param {http.request} req
@@ -223,27 +240,28 @@ class DeadSimpleRouter {
       return this.handlers[pathname][method].apply(this, [req, res]);
     }
 
+    const pathnameParts = this._cleanUpPaths(pathname.split('/'));
+
     // Handle paths WITH params
     for(const path in this.handlers) {
+      const handlerPathParts = this._cleanUpPaths(path.split('/'));
       if(
-        this.pathParamsRegexp.test(path) &&
+        this._matchesRouteWithParams(pathnameParts, handlerPathParts) &&
         this.handlers[path]?.[method]
       ) {
-        const pathParts = this._cleanUpPaths(path.split('/'));
-        const urlParts = this._cleanUpPaths(pathname.split('/'));
 
         // Mismatched params on route and url
-        if(pathParts.length !== urlParts.length) {
+        if(handlerPathParts.length !== pathnameParts.length) {
           continue;
         }
 
-        for(const part in pathParts) {
-          if(pathParts[part].indexOf(':') === 0) {
-            req.params[pathParts[part].slice(1)] = urlParts[part];
+        for(const part in handlerPathParts) {
+          if(handlerPathParts[part].indexOf(':') === 0) {
+            req.params[handlerPathParts[part].slice(1)] = pathnameParts[part];
             continue;
           }
 
-          if(pathParts[part] !== urlParts[part]){
+          if(handlerPathParts[part] !== pathnameParts[part]){
             break;
           }
         }
