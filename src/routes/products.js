@@ -1,6 +1,6 @@
 const Router = require('./router');
-
 const { isAdmin } = require('../utils/auth');
+const { getValidFields } = require('../utils/helpers');
 const {
   getProducts,
   getProduct,
@@ -10,17 +10,13 @@ const {
   updatableFields,
 } = require('../services/product');
 
-const { getValidFields } = require('../utils/helpers');
-
-
 const productRouter = new Router();
-
 
 /**
  * GET products
  */
 productRouter.get('/api/products', async (req, res) => {
-  if(!req.user) {
+  if (!req.user) {
     return res.fail('Only logged-in users are allowed to view products!', 403);
   }
 
@@ -32,14 +28,14 @@ productRouter.get('/api/products', async (req, res) => {
  * GET product
  */
 productRouter.get('/api/products/:productId', async (req, res) => {
-  if(!req.user) {
+  if (!req.user) {
     return res.fail('Only logged-in users are allowed to view products!', 403);
   }
 
   const productId = req.params?.productId;
   const product = await getProduct(productId);
 
-  if(!product) {
+  if (!product) {
     return res.fail(`Product with id ${productId} not found!`, 404);
   }
 
@@ -54,13 +50,13 @@ productRouter.post('/api/products', async (req, res) => {
     return res.fail('Invalid Content-Type. Expected application/json', 400);
   }
 
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to create products!', 403);
   }
 
   const newProduct = await createProduct(req.body);
 
-  return res.json(newProduct);
+  return res.json(newProduct, 201);
 });
 
 /**
@@ -73,14 +69,14 @@ productRouter.put('/api/products/:productId', async (req, res) => {
     return res.fail('Invalid Content-Type. Expected application/json', 400);
   }
 
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to update products!', 403);
   }
 
   const updatedFields = getValidFields(req.body, updatableFields);
   const updatedProduct = await updateProduct(productId, updatedFields);
 
-  if(!updatedProduct) {
+  if (!updatedProduct) {
     return res.fail(`Product with id ${productId} not found!`, 404);
   }
 
@@ -93,13 +89,13 @@ productRouter.put('/api/products/:productId', async (req, res) => {
 productRouter.delete('/api/products/:productId', async (req, res) => {
   const { productId } = req.params;
 
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to delete products!', 403);
   }
 
   const deletedProduct = await deleteProduct(productId);
 
-  if(!deletedProduct) {
+  if (!deletedProduct) {
     return res.fail(`Product with id ${productId} not found!`, 404);
   }
 

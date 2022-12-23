@@ -14,11 +14,18 @@ mongoose.set('strictQuery', true);
  *
  * @returns {string} connection URL
  */
-const getDbUrl = () => {
-  return process.env.DBURL ?? DEFAULT_DBURL;
+const getDbUrl = () => process.env.DBURL ?? DEFAULT_DBURL;
+
+const handleCriticalError = (err) => {
+  console.error(err);
+  throw err;
 };
 
-function connectDB() {
+const disconnectDB = () => {
+  mongoose.disconnect();
+};
+
+const connectDB = () => {
   // Do nothing if already connected
   if (!mongoose.connection || mongoose.connection.readyState === 0) {
     mongoose
@@ -28,7 +35,7 @@ function connectDB() {
         autoIndex: true,
       })
       .then(() => {
-        mongoose.connection.on('error', err => {
+        mongoose.connection.on('error', (err) => {
           console.error(err);
         });
 
@@ -36,15 +43,6 @@ function connectDB() {
       })
       .catch(handleCriticalError);
   }
-}
-
-function handleCriticalError(err) {
-  console.error(err);
-  throw err;
-}
-
-function disconnectDB() {
-  mongoose.disconnect();
-}
+};
 
 module.exports = { connectDB, disconnectDB, getDbUrl };

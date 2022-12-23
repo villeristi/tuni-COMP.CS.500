@@ -1,71 +1,58 @@
-const responseUtils = require('../utils/responseUtils');
-const { handleResource } = require('../utils/router');
+const Router = require('./router');
 
-const { isAdmin, getCurrentUser } = require('../utils/auth');
-const { getOrders, getOrder } = require('../services/order');
+const { isAdmin } = require('../utils/auth');
+const { getOrders, getOrder, createOrder } = require('../services/order');
 
-const HTTPError = require('../errors/http-error');
-
-const RESOURCE_BASE = '/api/orders'
+const orderRouter = new Router();
 
 /**
- * Handler-methods
+ * GET orders
  */
-const methods = {
-
-  /**
-   * Fetch all orders
-   *
-   * @param  {...any} args
-   * @returns Array[Order]
-   */
-  'GET_ROOT': async (...args) => {
-    const [_, request, response] = args;
-    const currentUser = getCurrentUser(request);
-
-    if(!currentUser) {
-      return responseUtils.forbidden(response);
-    }
-
-    const customerId = isAdmin(request) ? null : currentUser.id;
-
-    const orders = await getOrders(customerId);
-    return responseUtils.sendJson(response, orders);
-  },
-
-  /**
-   * Fetch a single order
-   *
-   * @param  {...any} args
-   * @returns Order
-   */
-  'GET': async (...args) => {
-    const [id, request, response] = args;
-    const currentUser = getCurrentUser(request);
-
-    if(!currentUser) {
-      return responseUtils.forbidden(response);
-    }
-
-    const customerId = isAdmin(request) ? null : currentUser.id;
-    const order = await getOrder(id, customerId);
-
-    if(!order) {
-      throw new HTTPError({
-        message: `Order with id ${id} not found!`,
-        status: 404,
-      });
-    }
-
-    return responseUtils.sendJson(response, order);
-  },
-
-  'DEFAULT': async (...args) => {
-    const [_, __, response] = args;
-    return responseUtils.methodNotAllowed(response);
+orderRouter.get('/api/orders', async (req, res) => {
+  if (!req.user) {
+    return res.fail('Only logged-in users are allowed to view orders!', 403);
   }
-}
 
-module.exports = async (request, response) => {
-  return await handleResource(request, response, RESOURCE_BASE, methods);
-}
+  const customerId = isAdmin(req.user) ? null : req.user.id;
+  const orders = await getOrders(customerId);
+
+  return res.json(orders);
+});
+
+/**
+ * GET order
+ */
+orderRouter.get('/api/orders/:orderId', async (req, res) => {
+  if (!req.user) {
+    return res.fail('Only logged-in users are allowed to view orders!', 403);
+  }
+
+  const orderId = req.params?.orderId;
+  const customerId = isAdmin(req.user) ? null : req.user.id;
+  const order = await getOrder(orderId, customerId);
+
+  if (!order) {
+    return res.fail(`Order with id ${orderId} not found!`);
+  }
+
+  return res.json(order);
+});
+
+/**
+ * POST order
+ */
+orderRouter.post('/api/orders', async (req, res) => {
+  if (!req.user) {
+    return res.fail('Only logged-in users are allowed to create orders!', 403);
+  }
+
+  if (isAdmin(req.user)) {
+    return res.fail('Admins are not allowed to create orders!', 403);
+  }
+
+  const order = await createOrder(req.body);
+
+  return res.json(order, 201);
+});
+
+module.exports = orderRouter;

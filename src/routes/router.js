@@ -2,9 +2,7 @@ const mongoose = require('mongoose');
 const HTTPError = require('../errors/http-error');
 const { getCurrentUser } = require('../utils/auth');
 
-const IGNORE_PATHNAMES = [
-  'favicon.ico',
-];
+const IGNORE_PATHNAMES = ['favicon.ico'];
 
 const supportedMethods = ['get', 'post', 'put', 'delete'];
 
@@ -15,13 +13,14 @@ const supportedMethods = ['get', 'post', 'put', 'delete'];
  * @returns Function
  */
 const sendAsJson = (...args) => {
-  const [_, res] = args;
+  // eslint-disable-next-line no-unused-vars
+  const [_, res] = args;
 
   return (payload, code = 200) => {
     res.writeHead(code, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(payload));
-  }
-}
+  };
+};
 
 /**
  * add .fail function to http.response
@@ -30,13 +29,14 @@ const sendAsJson = (...args) => {
  * @returns Function
  */
 const sendFail = (...args) => {
-  const [_, res] = args;
+  // eslint-disable-next-line no-unused-vars
+  const [_, res] = args;
 
   return (message = 'internal server error', code = 500) => {
     res.writeHead(code, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({error: message}));
-  }
-}
+    return res.end(JSON.stringify({ error: message }));
+  };
+};
 
 /**
  * Add .body-property to request
@@ -45,20 +45,21 @@ const sendFail = (...args) => {
  * @returns JSON
  */
 const bodyAsJson = (...args) => {
+  // eslint-disable-next-line no-unused-vars
   const [req, _] = args;
 
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('error', err => reject(err));
-    req.on('data', chunk => {
+    req.on('error', (err) => reject(err));
+    req.on('data', (chunk) => {
       body += chunk.toString();
     });
 
     req.on('end', () => {
       try {
         resolve(JSON.parse(body));
-      } catch {
-        resolve({})
+      } catch (err) {
+        resolve({});
       }
     });
   });
@@ -71,11 +72,12 @@ const bodyAsJson = (...args) => {
  * @returns {boolean}
  */
 const isJson = (...args) => {
+  // eslint-disable-next-line no-unused-vars
   const [req, _] = args;
   return new Promise((resolve) => {
-    return resolve(req.headers['content-type']?.toLowerCase() === 'application/json');
+    resolve(req.headers['content-type']?.toLowerCase() === 'application/json');
   });
-}
+};
 
 /**
  * Add .user-property to request
@@ -84,11 +86,12 @@ const isJson = (...args) => {
  * @returns {boolean}
  */
 const getUser = (...args) => {
+  // eslint-disable-next-line no-unused-vars
   const [req, _] = args;
   return new Promise((resolve) => {
-    return resolve(getCurrentUser(req));
+    resolve(getCurrentUser(req));
   });
-}
+};
 
 /**
  * Always respond with something
@@ -96,35 +99,38 @@ const getUser = (...args) => {
  * @param {Function} func
  * @returns
  */
-const errorWrapper = (func) =>  (...args) => Promise.resolve(func(...args)).catch(
-  (err) => {
-    const [_, req] = args;
-    const status = (err instanceof mongoose.Error.ValidationError) ? 422 : err.status ?? 500;
-    const errorMsg =
-      (err instanceof mongoose.Error.ValidationError) || (err instanceof HTTPError)
-      ? err.message
-      : 'internal server error';
+const errorWrapper =
+  (func) =>
+  (...args) =>
+    Promise.resolve(func(...args)).catch((err) => {
+      // eslint-disable-next-line no-unused-vars
+      const [_, req] = args;
+      const status =
+        err instanceof mongoose.Error.ValidationError ? 422 : err.status ?? 500;
+      const errorMsg =
+        err instanceof mongoose.Error.ValidationError ||
+        err instanceof HTTPError
+          ? err.message
+          : 'internal server error';
 
-    console.error(err);
+      console.error(err);
 
-    return req.fail(errorMsg, status);
-  }
-);
+      return req.fail(errorMsg, status);
+    });
 
 class DeadSimpleRouter {
   constructor() {
     this.handlers = {};
-    this.pathParamsRegexp = new RegExp(/(\/:.*?)+/, 'gi');
 
     // "magic" methods
-    for(const method of supportedMethods) {
+    supportedMethods.forEach((method) => {
       this[method] = (path, handler) => {
         this.handlers[path] = {
           ...this.handlers[path],
           [method]: errorWrapper(handler),
-        }
-      }
-    }
+        };
+      };
+    });
   }
 
   /**
@@ -133,9 +139,10 @@ class DeadSimpleRouter {
    * @param {array} pathsArray
    * @returns
    */
-  _cleanUpPaths = (pathsArray) => pathsArray.filter((item) => {
-    return Boolean(item) && !IGNORE_PATHNAMES.includes(item);
-  });
+  cleanUpPaths = (pathsArray) =>
+    pathsArray.filter(
+      (item) => Boolean(item) && !IGNORE_PATHNAMES.includes(item)
+    );
 
   /**
    * Send options
@@ -144,7 +151,7 @@ class DeadSimpleRouter {
    * @param {http.response} res
    * @returns
    */
-  _sendOptions = (path, res) => {
+  sendOptions = (path, res) => {
     const allowedMethods = Object.keys(this.handlers[path]).map((k) => k.toUpperCase()).join(', ');
 
     res.writeHead(204, {
@@ -155,7 +162,7 @@ class DeadSimpleRouter {
     });
 
     return res.end();
-  }
+  };
 
   /**
    * Attach child routers
@@ -163,14 +170,19 @@ class DeadSimpleRouter {
    * @param {DeadSimpleRouter|Array<DeadSimpleRouter>} routerInstances
    */
   attachRouters = (routerInstances) => {
-    const instances = Array.isArray(routerInstances) ? routerInstances : [routerInstances];
+    const instances = Array.isArray(routerInstances)
+      ? routerInstances
+      : [routerInstances];
 
     instances.forEach((instance) => {
-      for(const path in instance.handlers) {
-        this.handlers[path] = {...this.handlers[path], ...instance.handlers[path]}
-      }
+      Object.keys(instance.handlers).forEach((path) => {
+        this.handlers[path] = {
+          ...this.handlers[path],
+          ...instance.handlers[path],
+        };
+      });
     });
-  }
+  };
 
   /**
    * Check if current pathname & handler matches regex
@@ -179,15 +191,14 @@ class DeadSimpleRouter {
    * @param {Array<string>} handlerPathParts
    * @returns
    */
-  _matchesRouteWithParams = (currentPathParts, handlerPathParts) => {
-    const resourceBase = '/' + currentPathParts.slice(0, -1).join('/');
-    const currentPath = '/' + currentPathParts.join('/');
-    const handlerPath = '/' + handlerPathParts.join('/');
-    const regex = new RegExp(`^${resourceBase}(\/.+?)$`)
+  matchesRouteWithParams = (currentPathParts, handlerPathParts) => {
+    const resourceBase = `/${currentPathParts?.slice(0, -1).join('/')}`;
+    const currentPath = `/${currentPathParts?.join('/')}`;
+    const handlerPath = `/${handlerPathParts?.join('/')}`;
+    const regex = new RegExp(`^${resourceBase}(/.+?)$`);
 
     return regex.test(currentPath) && regex.test(handlerPath);
   };
-
 
   /**
    * Handle the requests
@@ -198,11 +209,14 @@ class DeadSimpleRouter {
    */
   handleRequests = async (req, res) => {
     const { method: m, headers } = req;
-    const { pathname, searchParams } = new URL(req.url, `http://${headers.host}`);
+    const { pathname, searchParams } = new URL(
+      req.url,
+      `http://${headers.host}`
+    );
     const method = m.toLowerCase();
 
     // Add initial .params-property to request
-    req.params = {}
+    req.params = {};
 
     // Add .query-property to request
     req.query = Object.fromEntries(searchParams);
@@ -222,56 +236,50 @@ class DeadSimpleRouter {
     // add .user-property to request
     req.user = await getUser.apply(this, [req, res]);
 
+    // Get current pathname as array
+    const pathnameParts = this.cleanUpPaths(pathname.split('/'));
+
+    // Get current path if it has params that match with defined regex
+    const pathWithParams = Object.keys(this.handlers).find((path) => {
+      const handlerPathParts = this.cleanUpPaths(path.split('/'));
+      return this.matchesRouteWithParams(pathnameParts, handlerPathParts);
+    });
+
     // Handle OPTIONS-request
-    if(method === 'options') {
-      if(this.handlers[pathname]) {
-        return this._sendOptions(pathname, res);
+    if (method === 'options') {
+      // Path without params found
+      if (this.handlers[pathname]) {
+        return this.sendOptions(pathname, res);
       }
 
-      for(const path in this.handlers) {
-        if(this.pathParamsRegexp.test(path)) {
-          return this._sendOptions(path, res);
-        }
+      // Path with params found
+      if (pathWithParams) {
+        return this.sendOptions(pathWithParams, res);
       }
     }
 
     // Handle paths without params
-    if(this.handlers[pathname]?.[method]) {
+    if (this.handlers[pathname]?.[method]) {
       return this.handlers[pathname][method].apply(this, [req, res]);
     }
 
-    const pathnameParts = this._cleanUpPaths(pathname.split('/'));
+    // Handle paths with params
+    if (pathWithParams && this.handlers[pathWithParams]?.[method]) {
+      const handlerPathParts = this.cleanUpPaths(pathWithParams.split('/'));
 
-    // Handle paths WITH params
-    for(const path in this.handlers) {
-      const handlerPathParts = this._cleanUpPaths(path.split('/'));
-      if(
-        this._matchesRouteWithParams(pathnameParts, handlerPathParts) &&
-        this.handlers[path]?.[method]
-      ) {
-
-        // Mismatched params on route and url
-        if(handlerPathParts.length !== pathnameParts.length) {
-          continue;
-        }
-
-        for(const part in handlerPathParts) {
-          if(handlerPathParts[part].indexOf(':') === 0) {
+      if (handlerPathParts.length === pathnameParts.length) {
+        Object.keys(handlerPathParts).forEach((part) => {
+          if (handlerPathParts[part].indexOf(':') === 0) {
             req.params[handlerPathParts[part].slice(1)] = pathnameParts[part];
-            continue;
           }
+        });
 
-          if(handlerPathParts[part] !== pathnameParts[part]){
-            break;
-          }
-        }
-
-        return this.handlers[path][method].apply(this, [req, res]);
+        return this.handlers[pathWithParams][method].apply(this, [req, res]);
       }
     }
 
     return this.defaultHandler(res);
-  }
+  };
 
   /**
    *
@@ -282,8 +290,7 @@ class DeadSimpleRouter {
     // Finally catch as 404
     res.statusCode = 404;
     return res.end('Not found');
-  }
-};
+  };
+}
 
-// Export as singleton
 module.exports = DeadSimpleRouter;

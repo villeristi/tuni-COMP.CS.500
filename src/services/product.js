@@ -8,26 +8,25 @@ const updatableFields = ['name', 'price', 'image', 'description'];
  * @param {Product} productInDB
  * @returns
  */
-const ProductDTO = (productInDB) => {
-  return {
-    id: productInDB._id,
-    name: productInDB.name,
-    price: productInDB.price,
-    image: productInDB.image,
-    description: productInDB.description,
-  };
-}
+const ProductDTO = (productInDB) => ({
+  // eslint-disable-next-line no-underscore-dangle
+  id: productInDB._id,
+  name: productInDB.name,
+  price: productInDB.price,
+  image: productInDB.image,
+  description: productInDB.description,
+});
 
 /**
  * Fetch all products
  *
- * @returns Product[]
+ * @returns Array<Product>
  */
 const getProducts = async () => {
   const products = await Product.find({});
 
   return products?.map((product) => ProductDTO(product));
-}
+};
 
 /**
  * Fetch a single product
@@ -37,7 +36,7 @@ const getProducts = async () => {
 const getProduct = async (productId) => {
   const product = await Product.findOne({ _id: productId });
   return product ? ProductDTO(product) : null;
-}
+};
 
 /**
  * Create a product
@@ -49,7 +48,7 @@ const createProduct = async (body) => {
   await product?.validate();
 
   return product ? ProductDTO(product) : null;
-}
+};
 
 /**
  * Update a product
@@ -57,11 +56,15 @@ const createProduct = async (body) => {
  * @returns Product
  */
 const updateProduct = async (productId, body) => {
-  const product = await Product.findOneAndUpdate({ _id: productId }, { ...body }, { new: true });
-  await product.validate();
+  const product = await Product.findOneAndUpdate(
+    { _id: productId },
+    { ...body },
+    { new: true }
+  );
+  await product?.validate();
 
   return product ? ProductDTO(product) : null;
-}
+};
 
 /**
  * Delete product
@@ -71,9 +74,7 @@ const updateProduct = async (productId, body) => {
 const deleteProduct = async (productId) => {
   const deleted = await Product.findOneAndRemove({ _id: productId });
   return deleted ? ProductDTO(deleted) : null;
-}
-
-
+};
 
 module.exports = {
   getProducts,
@@ -82,4 +83,4 @@ module.exports = {
   deleteProduct,
   createProduct,
   updatableFields,
-}
+};

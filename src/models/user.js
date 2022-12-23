@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+
+const { Schema } = mongoose;
 
 // You can use SALT_ROUNDS when hashing the password with bcrypt.hashSync()
 const SALT_ROUNDS = 10;
@@ -10,19 +11,20 @@ const SALT_ROUNDS = 10;
 const SCHEMA_DEFAULTS = {
   name: {
     minLength: 1,
-    maxLength: 50
+    maxLength: 50,
   },
   email: {
     // https://stackoverflow.com/questions/46155/how-to-validate-an-email-address-in-javascript
-    match: /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
+    match:
+      /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/,
   },
   password: {
-    minLength: 10
+    minLength: 10,
   },
   role: {
     values: ['admin', 'customer'],
-    defaultValue: 'customer'
-  }
+    defaultValue: 'customer',
+  },
 };
 
 const userSchema = new Schema({
@@ -38,21 +40,23 @@ const userSchema = new Schema({
     type: String,
     required: true,
     index: {
-      unique: true
+      unique: true,
     },
     validate: {
-      validator: (value) => SCHEMA_DEFAULTS.email.match.test(value.toLowerCase()),
+      validator: (value) =>
+        SCHEMA_DEFAULTS.email.match.test(value.toLowerCase()),
       message: 'Email looks malformed',
-    }
+    },
   },
 
   password: {
     type: String,
     required: true,
     minLength: SCHEMA_DEFAULTS.password.minLength,
-    set: (value) => {
-      return (!Boolean(value) || value.length < SCHEMA_DEFAULTS.password.minLength) ? value : bcrypt.hashSync(value, bcrypt.genSaltSync(SALT_ROUNDS));
-    },
+    set: (value) =>
+      !value || value.length < SCHEMA_DEFAULTS.password.minLength
+        ? value
+        : bcrypt.hashSync(value, bcrypt.genSaltSync(SALT_ROUNDS)),
   },
 
   role: {
@@ -73,9 +77,9 @@ const userSchema = new Schema({
  * @param {string} password
  * @returns {Promise<boolean>} promise that resolves to the comparison result
  */
-userSchema.methods.checkPassword = async function(password) {
-  return await bcrypt.compare(password, this.password)
-}
+userSchema.methods.checkPassword = async function (password) {
+  return bcrypt.compare(password, this.password);
+};
 
 // Omit the version key when serialized to JSON
 userSchema.set('toJSON', { virtuals: false, versionKey: false });

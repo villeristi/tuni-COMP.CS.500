@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+
+const { Schema } = mongoose;
 
 const OrderedItem = new Schema({
   product: {
@@ -10,30 +11,30 @@ const OrderedItem = new Schema({
     },
     name: {
       type: String,
-      required: true
+      required: true,
     },
     price: {
-        type: Number,
-        required: true
+      type: Number,
+      required: true,
     },
-    description: String
+    description: String,
   },
   quantity: {
     type: Number,
     min: 1,
     required: true,
-  }
+  },
 });
 
 const orderSchema = new Schema({
-  customerId:  {
+  customerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
   items: {
     type: [OrderedItem],
     minLength: 1,
-  }
+  },
 });
 
 orderSchema.set('toJSON', { virtuals: false, versionKey: false });

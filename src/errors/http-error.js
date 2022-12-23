@@ -1,6 +1,6 @@
 class HTTPError extends Error {
   constructor(params) {
-    const {message, status, error} = params;
+    const { message, status, error } = params;
 
     super(message);
     Error.captureStackTrace(this, this.constructor);

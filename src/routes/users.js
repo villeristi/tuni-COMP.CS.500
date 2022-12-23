@@ -11,15 +11,13 @@ const {
 
 const { getValidFields } = require('../utils/helpers');
 
-
 const userRouter = new Router();
-
 
 /**
  * GET users
  */
 userRouter.get('/api/users', async (req, res) => {
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to view users!', 403);
   }
 
@@ -31,14 +29,14 @@ userRouter.get('/api/users', async (req, res) => {
  * GET user
  */
 userRouter.get('/api/users/:userId', async (req, res) => {
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to view users!', 403);
   }
 
   const userId = req.params?.userId;
   const user = await getUser(userId);
 
-  if(!user) {
+  if (!user) {
     return res.fail(`User with id ${userId} not found!`, 404);
   }
 
@@ -55,18 +53,18 @@ userRouter.put('/api/users/:userId', async (req, res) => {
     return res.fail('Invalid Content-Type. Expected application/json', 400);
   }
 
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to view users!', 403);
   }
 
-  if(req.user?.id === userId) {
+  if (req.user?.id === userId) {
     return res.fail(`You can't update yourself!`, 400);
   }
 
   const updatedFields = getValidFields(req.body, updatableFields);
   const updatedUser = await updateUser(userId, updatedFields);
 
-  if(!updatedUser) {
+  if (!updatedUser) {
     return res.fail(`User with id ${userId} not found!`, 404);
   }
 
@@ -79,18 +77,17 @@ userRouter.put('/api/users/:userId', async (req, res) => {
 userRouter.delete('/api/users/:userId', async (req, res) => {
   const { userId } = req.params;
 
-  if(!isAdmin(req.user)) {
+  if (!isAdmin(req.user)) {
     return res.fail('Only admins are allowed to delete users!', 403);
   }
 
   const deletedUser = await deleteUser(userId);
 
-  if(!deletedUser) {
+  if (!deletedUser) {
     return res.fail(`User with id ${userId} not found!`, 404);
   }
 
   return res.json(deletedUser);
 });
-
 
 module.exports = userRouter;
